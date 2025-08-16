@@ -1,0 +1,12 @@
+{
+  "model_mode": "ChatGPT",
+  "model_name": "gpt-4-turbo",
+  "openai_api_key": "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",
+  "temperature": 0.7,
+  "use_mps": false,
+  "local_paths": {
+    "CodeLlama": "/Users/backtoback/models/codellama/CodeLlama-13b-hf",
+    "DeepSeek": "/Users/backtoback/models/deepseek/deepseek-coder-6.7b-instruct",
+    "StarCoder": "/Users/backtoback/models/starcoder/starcoder-7B"
+  }
+}
