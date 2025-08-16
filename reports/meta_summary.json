@@ -1,0 +1,413 @@
+{
+  "project_size_estimate": "2013 lines",
+  "files": [
+    {
+      "path": "./logger.py",
+      "lines": 55,
+      "classes": 1,
+      "functions": 4,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "./utils.py",
+      "lines": 7,
+      "classes": 0,
+      "functions": 1,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "core/file_manager.py",
+      "lines": 327,
+      "classes": 1,
+      "functions": 16,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/fixer.py",
+      "lines": 150,
+      "classes": 1,
+      "functions": 7,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/runner.py",
+      "lines": 69,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/analyzer.py",
+      "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/analyzer.py\n# 👁️ Строк: 129\n# 🏷️ Теги: none\n# 🧩 Классы: CodeAnalyzer\n# 🪝 Функции: __init__, chat, analyze_code, _analyze_single_chunk, generate_code_star_coder, _split_into_chunks\n\n## Краткое описание:\nPython-модуль проекта Aideon. Требует ручного описания для точности.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+    },
+    {
+      "path": "modules/utils.py",
+      "lines": 18,
+      "classes": 0,
+      "functions": 1,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/orchestrator.py",
+      "lines": 206,
+      "classes": 1,
+      "functions": 13,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/self_improver.py",
+      "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/self_improver.py\n# 👁️ Строк: 221\n# 🏷️ Теги: none\n# 🧩 Классы: SelfImprover\n# 🪝 Функции: __init__, run_self_improvement, suggest_new_features, solve_with_gpt, add_module_by_task\n\n## Краткое описание:\nМодуль для самоусовершенствования и автогенерации изменений в проекте.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+    },
+    {
+      "path": "modules/improver/error_debugger.py",
+      "lines": 45,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/improver/project_scanner.py",
+      "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/improver/project_scanner.py\n# 👁️ Строк: 142\n# 🏷️ Теги: none\n# 🧩 Классы: ProjectScanner\n# 🪝 Функции: is_hidden, is_copy_or_temp, __init__, scan, _should_ignore, _is_valid_file, _hash_file, _load_cache, _save_cache\n\n## Краткое описание:\nСканирует структуру проекта, формирует дерево файлов и summary.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+    },
+    {
+      "path": "modules/improver/improvement_planner.py",
+      "lines": 51,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/improver/patcher.py",
+      "lines": 77,
+      "classes": 1,
+      "functions": 6,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/improver/patch_requester.py",
+      "lines": 59,
+      "classes": 1,
+      "functions": 2,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "modules/improver/file_summarizer.py",
+      "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/improver/file_summarizer.py\n# 👁️ Строк: 96\n# 🏷️ Теги: none\n# 🧩 Классы: FileSummarizer\n# 🪝 Функции: summarize_code, summarize, _parse_structure, _infer_tags, _guess_purpose\n\n## Краткое описание:\nМодуль для самоусовершенствования и автогенерации изменений в проекте.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+    },
+    {
+      "path": "modules/improver/meta_summarizer.py",
+      "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/improver/meta_summarizer.py\n# 👁️ Строк: 77\n# 🏷️ Теги: none\n# 🧩 Классы: MetaSummarizer\n# 🪝 Функции: __init__, build_meta_summary, export_json\n\n## Краткое описание:\nМодуль для самоусовершенствования и автогенерации изменений в проекте.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+    },
+    {
+      "path": "ui/main_window.py",
+      "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/ui/main_window.py\n# 👁️ Строк: 323\n# 🏷️ Теги: core\n# 🧩 Классы: SelfImproverPanel, MainWindow\n# 🪝 Функции: __init__, _init_ui, start_manual_improvement, do_next_step, stop_process, reset_buttons, show_meta_summary, add_ai_idea, generate_ai_idea, update_ai_ideas_tab, add_task, generate_ai_task, update_tasks_tab, update_history_tab, __init__, _create_menu_bar, _init_ui, load_settings, save_settings, closeEvent\n\n## Краткое описание:\nPython-модуль проекта Aideon. Требует ручного описания для точности.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+    },
+    {
+      "path": "ui/chat_panel.py",
+      "lines": 113,
+      "classes": 1,
+      "functions": 7,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "ui/analysis_thread.py",
+      "lines": 74,
+      "classes": 1,
+      "functions": 4,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "ui/panels/panel_issues.py",
+      "lines": 27,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "ui/panels/panel_solutions.py",
+      "lines": 126,
+      "classes": 1,
+      "functions": 6,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "ui/panels/panel_history.py",
+      "lines": 190,
+      "classes": 1,
+      "functions": 7,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "ui/panels/panel_process.py",
+      "lines": 364,
+      "classes": 2,
+      "functions": 19,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    },
+    {
+      "path": "ui/panels/panel_result.py",
+      "lines": 55,
+      "classes": 1,
+      "functions": 4,
+      "todos": 0,
+      "tags": null,
+      "raw_summary": null
+    }
+  ],
+  "folders": [
+    {
+      "path": ".",
+      "items": [
+        {
+          "name": "logger.py",
+          "lines": 55,
+          "classes": 1,
+          "functions": 4,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "utils.py",
+          "lines": 7,
+          "classes": 0,
+          "functions": 1,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        }
+      ]
+    },
+    {
+      "path": "core",
+      "items": [
+        {
+          "name": "file_manager.py",
+          "lines": 327,
+          "classes": 1,
+          "functions": 16,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        }
+      ]
+    },
+    {
+      "path": "modules",
+      "items": [
+        {
+          "name": "fixer.py",
+          "lines": 150,
+          "classes": 1,
+          "functions": 7,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "runner.py",
+          "lines": 69,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "analyzer.py",
+          "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/analyzer.py\n# 👁️ Строк: 129\n# 🏷️ Теги: none\n# 🧩 Классы: CodeAnalyzer\n# 🪝 Функции: __init__, chat, analyze_code, _analyze_single_chunk, generate_code_star_coder, _split_into_chunks\n\n## Краткое описание:\nPython-модуль проекта Aideon. Требует ручного описания для точности.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+        },
+        {
+          "name": "utils.py",
+          "lines": 18,
+          "classes": 0,
+          "functions": 1,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "orchestrator.py",
+          "lines": 206,
+          "classes": 1,
+          "functions": 13,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "self_improver.py",
+          "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/self_improver.py\n# 👁️ Строк: 221\n# 🏷️ Теги: none\n# 🧩 Классы: SelfImprover\n# 🪝 Функции: __init__, run_self_improvement, suggest_new_features, solve_with_gpt, add_module_by_task\n\n## Краткое описание:\nМодуль для самоусовершенствования и автогенерации изменений в проекте.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+        }
+      ]
+    },
+    {
+      "path": "modules/improver",
+      "items": [
+        {
+          "name": "error_debugger.py",
+          "lines": 45,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "project_scanner.py",
+          "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/improver/project_scanner.py\n# 👁️ Строк: 142\n# 🏷️ Теги: none\n# 🧩 Классы: ProjectScanner\n# 🪝 Функции: is_hidden, is_copy_or_temp, __init__, scan, _should_ignore, _is_valid_file, _hash_file, _load_cache, _save_cache\n\n## Краткое описание:\nСканирует структуру проекта, формирует дерево файлов и summary.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+        },
+        {
+          "name": "improvement_planner.py",
+          "lines": 51,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "patcher.py",
+          "lines": 77,
+          "classes": 1,
+          "functions": 6,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "patch_requester.py",
+          "lines": 59,
+          "classes": 1,
+          "functions": 2,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "file_summarizer.py",
+          "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/improver/file_summarizer.py\n# 👁️ Строк: 96\n# 🏷️ Теги: none\n# 🧩 Классы: FileSummarizer\n# 🪝 Функции: summarize_code, summarize, _parse_structure, _infer_tags, _guess_purpose\n\n## Краткое описание:\nМодуль для самоусовершенствования и автогенерации изменений в проекте.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+        },
+        {
+          "name": "meta_summarizer.py",
+          "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/modules/improver/meta_summarizer.py\n# 👁️ Строк: 77\n# 🏷️ Теги: none\n# 🧩 Классы: MetaSummarizer\n# 🪝 Функции: __init__, build_meta_summary, export_json\n\n## Краткое описание:\nМодуль для самоусовершенствования и автогенерации изменений в проекте.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+        }
+      ]
+    },
+    {
+      "path": "ui",
+      "items": [
+        {
+          "name": "main_window.py",
+          "raw_summary": "# 📁 Путь: /Users/backtoback/aideon_5.0/app/ui/main_window.py\n# 👁️ Строк: 323\n# 🏷️ Теги: core\n# 🧩 Классы: SelfImproverPanel, MainWindow\n# 🪝 Функции: __init__, _init_ui, start_manual_improvement, do_next_step, stop_process, reset_buttons, show_meta_summary, add_ai_idea, generate_ai_idea, update_ai_ideas_tab, add_task, generate_ai_task, update_tasks_tab, update_history_tab, __init__, _create_menu_bar, _init_ui, load_settings, save_settings, closeEvent\n\n## Краткое описание:\nPython-модуль проекта Aideon. Требует ручного описания для точности.\n\n🔍 Это summary сгенерировано автоматически. Проверь вручную при необходимости."
+        },
+        {
+          "name": "chat_panel.py",
+          "lines": 113,
+          "classes": 1,
+          "functions": 7,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "analysis_thread.py",
+          "lines": 74,
+          "classes": 1,
+          "functions": 4,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        }
+      ]
+    },
+    {
+      "path": "ui/panels",
+      "items": [
+        {
+          "name": "panel_issues.py",
+          "lines": 27,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "panel_solutions.py",
+          "lines": 126,
+          "classes": 1,
+          "functions": 6,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "panel_history.py",
+          "lines": 190,
+          "classes": 1,
+          "functions": 7,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "panel_process.py",
+          "lines": 364,
+          "classes": 2,
+          "functions": 19,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        },
+        {
+          "name": "panel_result.py",
+          "lines": 55,
+          "classes": 1,
+          "functions": 4,
+          "todos": 0,
+          "tags": null,
+          "raw_summary": null
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "folders_count": 6,
+    "files_count": 24
+  }
+}
