@@ -1,8 +1,19 @@
 import json
-import openai
+import time
+from typing import Optional
 
 from app.utils import load_api_key
 from app.core.file_manager import FileManager
+
+# Пытаемся использовать новый клиент OpenAI, иначе fallback на старый openai.*
+try:
+    from openai import OpenAI  # новый SDK
+    _HAS_OAI_CLIENT = True
+except Exception:
+    _HAS_OAI_CLIENT = False
+
+import openai  # на случай старого SDK
+
 
 class CodeAnalyzer:
     """
@@ -10,51 +21,37 @@ class CodeAnalyzer:
     Локальные модели отключены. Всё — через OpenAI.
     """
 
-    def __init__(self, config=None, chat_panel=None):
+    def __init__(self, config=None):
         self.config = config or {}
         self.file_manager = FileManager()
+
         self.model_mode = "ChatGPT"
         self.api_key = load_api_key(self.config)
         self.openai_model = self.config.get("model_name", "gpt-4o")
-        self.temperature = self.config.get("temperature", 0.7)
-        self.max_context_tokens = self.config.get("max_context_tokens", 8192)
-        self.chat_panel = chat_panel  # Для логов запросов/ответов (можно не использовать)
+        self.temperature = float(self.config.get("temperature", 0.7))
+        self.max_context_tokens = int(self.config.get("max_context_tokens", 8192))
+        self.request_timeout = int(self.config.get("request_timeout", 60))
+        self.max_retries = int(self.config.get("max_retries", 2))
+
+        # Новый клиент, если доступен
+        self._client: Optional["OpenAI"] = None
+        if _HAS_OAI_CLIENT:
+            try:
+                self._client = OpenAI(api_key=self.api_key)
+            except Exception:
+                self._client = None
 
         print("✅ Используется ChatGPT (OpenAI).")
 
     def chat(self, prompt, system_msg="Ты — Aideon, самообучающийся AI."):
         """
         Свободный диалог с ChatGPT.
-        prompt: str (user prompt) или list[dict] (готовый messages)
         """
-        openai.api_key = self.api_key
-
-        # Автоматически определяем формат prompt
-        if isinstance(prompt, list):  # Готовый messages
-            messages = prompt
-        else:  # Просто строка — оборачиваем как обычно
-            messages = [
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt}
-            ]
-        # Логируем для панели, если надо
-        if self.chat_panel:
-            self.chat_panel.add_gpt_request(messages)
-        try:
-            response = openai.ChatCompletion.create(
-                model=self.openai_model,
-                messages=messages,
-                temperature=self.temperature
-            )
-            answer = response["choices"][0]["message"]["content"]
-            if self.chat_panel:
-                self.chat_panel.add_gpt_response(answer)
-            return answer
-        except Exception as e:
-            error_msg = f"Ошибка при обращении к OpenAI: {e}"
-            if self.chat_panel:
-                self.chat_panel.add_gpt_response(error_msg)
-            return error_msg
+        messages = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt},
+        ]
+        return self._chat_call(messages)
 
     def analyze_code(self, code_text, file_path=None):
         """
@@ -103,27 +100,69 @@ class CodeAnalyzer:
             "}\n"
             "Не добавляй ничего, кроме JSON."
         )
-        return self.chat(
-            [
-                {"role": "system", "content": context_prompt},
-                {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"}
-            ]
-        )
+
+        messages = [
+            {"role": "system", "content": context_prompt},
+            {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"},
+        ]
+        return self._chat_call(messages)
 
     def generate_code_star_coder(self, prompt_text):
+        """
+        Заглушка для локальной генерации (StarCoder отключён).
+        """
         return (
             "❌ Локальная модель StarCoder временно отключена. "
             "Используйте ChatGPT для генерации кода."
         )
 
     def _split_into_chunks(self, text, max_ctx):
+        """
+        Разделение текста на чанки по лимиту токенов/слов (очень грубо — по словам).
+        """
         text = text.strip()
         if not text:
             return [""]
+
         words = text.split()
         if len(words) <= max_ctx:
             return [text]
+
         chunks = []
         for i in range(0, len(words), max_ctx):
             chunks.append(" ".join(words[i:i + max_ctx]))
         return chunks
+
+    # --- Приватный унифицированный вызов OpenAI с ретраями/таймаутами ---
+    def _chat_call(self, messages):
+        """
+        Единая точка вызова OpenAI (новый клиент или fallback на старый API).
+        Ретраи с экспоненциальной паузой. Возвращает строку-ответ или сообщение об ошибке.
+        """
+        last_err = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                if self._client is not None:
+                    # Новый SDK
+                    resp = self._client.chat.completions.create(
+                        model=self.openai_model,
+                        messages=messages,
+                        temperature=self.temperature,
+                        timeout=self.request_timeout,
+                    )
+                    return (resp.choices[0].message.content or "").strip()
+                else:
+                    # Старый SDK совместимость
+                    openai.api_key = self.api_key
+                    response = openai.ChatCompletion.create(
+                        model=self.openai_model,
+                        messages=messages,
+                        temperature=self.temperature,
+                        request_timeout=self.request_timeout,
+                    )
+                    return (response["choices"][0]["message"]["content"] or "").strip()
+            except Exception as e:
+                last_err = e
+                if attempt < self.max_retries:
+                    time.sleep(1.5 * (attempt + 1))
+        return f"Ошибка при обращении к OpenAI: {last_err}"

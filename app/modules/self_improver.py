@@ -4,7 +4,6 @@ from datetime import datetime
 from app.core.file_manager import FileManager
 from app.modules.improver.project_scanner import ProjectScanner
 from app.modules.improver.file_summarizer import FileSummarizer
-from app.modules.improver.meta_summarizer import MetaSummarizer  # Новый импорт!
 from app.modules.improver.improvement_planner import ImprovementPlanner
 from app.modules.improver.patch_requester import PatchRequester
 from app.modules.improver.patcher import CodePatcher
@@ -22,11 +21,9 @@ class SelfImprover:
     - запрашивает обновлённый код,
     - сравнивает, применяет или отлаживает при ошибке.
     Может интегрироваться с ChatPanel для вывода GPT-запросов и ответов.
-
-    Расширено: может инициировать генерацию новых модулей и функций на основе метасаммери, решать ошибки и принимать пользовательские задачи.
     """
 
-    def __init__(self, config, chat_panel=None):
+    def __init__(self, config, chat_panel=None, apply_patches_automatically: bool = False):
         self.config = config
         self.file_manager = FileManager()
         self.chatgpt = CodeAnalyzer(config)
@@ -35,16 +32,20 @@ class SelfImprover:
         os.makedirs(self.backup_path, exist_ok=True)
         os.makedirs(self.diff_path, exist_ok=True)
         self.summarizer = FileSummarizer()
-        self.meta_summarizer = MetaSummarizer()  # Новый объект!
         self.planner = ImprovementPlanner()
         self.requester = PatchRequester()
         self.patcher = CodePatcher(backup_dir=self.backup_path, diff_dir=self.diff_path)
         self.debugger = ErrorDebugger(self.chatgpt)
         self.chat_panel = chat_panel  # Для вывода GPT-запросов/ответов в интерфейс (может быть None)
 
+        # Управление процессом
+        self.stop_requested = False
+        self.apply_patches_automatically = bool(apply_patches_automatically)
+
     def run_self_improvement(self):
         """
         Основной генератор логов/шагов самоусовершенствования.
+        Выводит этапы в чат (если задан chat_panel).
         """
         log_info("🧠 ▶️ Запущен процесс самоусовершенствования Aideon...")
         yield "🧠 ▶️ Запущен процесс самоусовершенствования Aideon..."
@@ -54,7 +55,19 @@ class SelfImprover:
         any_success = False
 
         for rel_dir, files in structure.items():
+            if self.stop_requested:
+                msg = "⏹️ Остановлено пользователем."
+                log_warning(msg)
+                yield msg
+                break
+
             for file_entry in files:
+                if self.stop_requested:
+                    msg = "⏹️ Остановлено пользователем."
+                    log_warning(msg)
+                    yield msg
+                    break
+
                 fname = file_entry["name"]
                 full_path = os.path.join("app", rel_dir, fname)
                 abs_path = os.path.abspath(full_path)
@@ -72,7 +85,7 @@ class SelfImprover:
                 log_info(msg)
                 yield msg
 
-                # Шаг 2 — план улучшения
+                # Шаг 2 — план улучшения (строим промт для GPT)
                 prompt_plan = self.planner.build_prompt(full_path, summary)
                 if self.chat_panel:
                     self.chat_panel.add_gpt_request(prompt_plan)
@@ -119,15 +132,24 @@ class SelfImprover:
 
                 # Шаг 4 — применение или автоматическая отладка
                 try:
-                    self.patcher.confirm_and_apply_patch(
-                        file_path=abs_path,
-                        old_code=old_code,
-                        new_code=new_code
-                    )
-                    msg = f"✅ Патч успешно применён: {full_path}"
-                    log_info(msg)
-                    yield msg
-                    any_success = True
+                    if self.apply_patches_automatically:
+                        self.patcher.confirm_and_apply_patch(
+                            file_path=abs_path,
+                            old_code=old_code,
+                            new_code=new_code
+                        )
+                        msg = f"✅ Патч успешно применён: {full_path}"
+                        log_info(msg)
+                        yield msg
+                        any_success = True
+                    else:
+                        # Безопасный режим: только сохранить diff, не применяя
+                        self.patcher._save_diff(abs_path, old_code, new_code)
+                        msg = f"📝 Diff сохранён (без применения): {full_path}"
+                        log_info(msg)
+                        yield msg
+                        any_success = True
+
                 except Exception as e:
                     log_error(f"💥 Ошибка при применении патча: {e}")
                     fix_code = self.debugger.request_fix(
@@ -140,15 +162,22 @@ class SelfImprover:
                         log_info(msg)
                         yield msg
                         try:
-                            self.patcher.confirm_and_apply_patch(
-                                file_path=abs_path,
-                                old_code=old_code,
-                                new_code=fix_code
-                            )
-                            msg = f"✅ Исправление успешно применено: {full_path}"
-                            log_info(msg)
-                            yield msg
-                            any_success = True
+                            if self.apply_patches_automatically:
+                                self.patcher.confirm_and_apply_patch(
+                                    file_path=abs_path,
+                                    old_code=old_code,
+                                    new_code=fix_code
+                                )
+                                msg = f"✅ Исправление успешно применено: {full_path}"
+                                log_info(msg)
+                                yield msg
+                                any_success = True
+                            else:
+                                self.patcher._save_diff(abs_path, old_code, fix_code)
+                                msg = f"📝 Diff исправления сохранён (без применения): {full_path}"
+                                log_info(msg)
+                                yield msg
+                                any_success = True
                         except Exception as e2:
                             msg = f"💥 Ошибка при втором применении патча: {e2}"
                             log_error(msg)
@@ -166,56 +195,3 @@ class SelfImprover:
             msg = "🧠 ✅ Самоусовершенствование завершено успешно!"
             log_info(msg)
             yield msg
-
-    # === AI-методы расширения, решения проблем, добавления модулей ===
-
-    def suggest_new_features(self):
-        """
-        AI-идеи для расширения проекта.
-        """
-        summary = self.meta_summarizer.build_meta_summary()
-        prompt = (
-            "Вот текущее метасаммери (meta-summary) проекта Python:\n"
-            f"{summary}\n\n"
-            "Предложи, какие новые модули, классы или функции можно добавить для улучшения системы. "
-            "Ответ — в виде списка идей и кратких описаний."
-        )
-        response = self.chatgpt.chat(prompt)
-        if self.chat_panel:
-            self.chat_panel.add_gpt_request(prompt)
-            self.chat_panel.add_gpt_response(response)
-        return response
-
-    def solve_with_gpt(self, problem_description):
-        """
-        Решить проблему или баг с учётом метасаммери проекта.
-        """
-        summary = self.meta_summarizer.build_meta_summary()
-        prompt = (
-            "Вот краткое метасаммери (meta-summary) проекта:\n"
-            f"{summary}\n\n"
-            f"Проблема: {problem_description}\n"
-            "Как оптимально это решить? Перечисли шаги и модули, которые стоит доработать."
-        )
-        response = self.chatgpt.chat(prompt)
-        if self.chat_panel:
-            self.chat_panel.add_gpt_request(prompt)
-            self.chat_panel.add_gpt_response(response)
-        return response
-
-    def add_module_by_task(self, user_task):
-        """
-        Добавление нового модуля по пользовательскому заданию.
-        """
-        summary = self.meta_summarizer.build_meta_summary()
-        prompt = (
-            "Текущая архитектура проекта (meta-summary):\n"
-            f"{summary}\n\n"
-            f"Пользователь хочет реализовать:\n{user_task}\n\n"
-            "Сначала уточни все детали (запроси недостающую информацию), затем предложи архитектуру и код модуля."
-        )
-        response = self.chatgpt.chat(prompt)
-        if self.chat_panel:
-            self.chat_panel.add_gpt_request(prompt)
-            self.chat_panel.add_gpt_response(response)
-        return response

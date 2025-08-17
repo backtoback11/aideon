@@ -147,6 +147,11 @@ class SelfImproverPanel(QWidget):
         self.next_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
         self.run_btn.setEnabled(True)
+        # Передаём в модуль признак остановки
+        try:
+            self.improver.stop_requested = True
+        except Exception:
+            pass
         self.log_output.append("🛑 Самоулучшение остановлено пользователем.\n")
 
     def reset_buttons(self):
