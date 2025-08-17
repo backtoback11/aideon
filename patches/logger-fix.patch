@@ -1,0 +1,9 @@
+*** a/app/logger.py
+--- b/app/logger.py
+@@
+ class ColorFormatter(logging.Formatter):
+@@
+-    def custom_format(self, record):
++    def format(self, record):
+         color = self.COLORS.get(record.levelno, "")
+         return f"{color}{super().format(record)}{self.RESET}"
