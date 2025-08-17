@@ -1,0 +1,190 @@
+*** a/app/modules/analyzer.py
+--- b/app/modules/analyzer.py
+@@
+-import json
+-import openai
+-
+-from app.utils import load_api_key
+-from app.core.file_manager import FileManager
++import json
++import time
++from typing import List, Dict, Any, Optional
++
++from app.utils import load_api_key
++from app.core.file_manager import FileManager
++
++# Совместимость с openai 0.x/1.x
++try:
++    from openai import OpenAI  # >=1.0
++    _OPENAI_V1 = True
++except Exception:
++    _OPENAI_V1 = False
++    import openai  # type: ignore
+@@
+ class CodeAnalyzer:
+@@
+-        self.model_mode = "ChatGPT"
+-        self.api_key = load_api_key(self.config)
+-        self.openai_model = self.config.get("model_name", "gpt-4o")
+-        self.temperature = self.config.get("temperature", 0.7)
+-        self.max_context_tokens = self.config.get("max_context_tokens", 8192)
+-
+-        print("✅ Используется ChatGPT (OpenAI).")
++        self.model_mode = "ChatGPT"
++        self.api_key = load_api_key(self.config)
++        self.openai_model = self.config.get("model_name", "gpt-4o")
++        self.temperature = float(self.config.get("temperature", 0.7))
++        self.max_context_tokens = int(self.config.get("max_context_tokens", 8192))
++        self.request_timeout = int(self.config.get("openai_timeout_sec", 60))
++        self.retry_attempts = int(self.config.get("openai_retries", 2))
++
++        if _OPENAI_V1:
++            self._client = OpenAI(api_key=self.api_key)
++        else:
++            openai.api_key = self.api_key  # legacy
++
++        print("✅ Используется ChatGPT (OpenAI) — совместимый клиент.")
+@@
+-    def chat(self, prompt, system_msg="Ты — Aideon, самообучающийся AI."):
+-        """
+-        Свободный диалог с ChatGPT.
+-        """
+-        openai.api_key = self.api_key
+-        try:
+-            response = openai.ChatCompletion.create(
+-                model=self.openai_model,
+-                messages=[
+-                    {"role": "system", "content": system_msg},
+-                    {"role": "user", "content": prompt}
+-                ],
+-                temperature=self.temperature
+-            )
+-            return response["choices"][0]["message"]["content"]
+-        except Exception as e:
+-            return f"Ошибка при обращении к OpenAI: {e}"
++    def chat(self, prompt: str, system_msg: str = "Ты — Aideon, самообучающийся AI.") -> str:
++        """Свободный диалог с GPT с ретраями и совместимостью API."""
++        messages = [
++            {"role": "system", "content": system_msg},
++            {"role": "user", "content": prompt},
++        ]
++        last_err = None
++        for attempt in range(self.retry_attempts + 1):
++            try:
++                if _OPENAI_V1:
++                    # Сначала попробуем современный Responses API
++                    try:
++                        resp = self._client.responses.create(
++                            model=self.openai_model,
++                            input=prompt,
++                            temperature=self.temperature,
++                            timeout=self.request_timeout,
++                            system=system_msg,
++                        )
++                        # Унифицированный извлекатель текста
++                        return self._extract_text_v1(resp)
++                    except Exception:
++                        # Фолбэк на chat.completions (поддерживается в 1.x)
++                        resp = self._client.chat.completions.create(
++                            model=self.openai_model,
++                            messages=messages,
++                            temperature=self.temperature,
++                            timeout=self.request_timeout,
++                        )
++                        return resp.choices[0].message.content or ""
++                else:
++                    # Legacy 0.x
++                    response = openai.ChatCompletion.create(
++                        model=self.openai_model,
++                        messages=messages,
++                        temperature=self.temperature,
++                        request_timeout=self.request_timeout,
++                    )
++                    return response["choices"][0]["message"]["content"]
++            except Exception as e:
++                last_err = e
++                if attempt < self.retry_attempts:
++                    time.sleep(1.0 * (attempt + 1))
++                else:
++                    return f"Ошибка при обращении к OpenAI: {e}"
++
++    def _extract_text_v1(self, resp: Any) -> str:
++        """
++        Унифицированная распаковка текста для Responses API:
++        resp.output_text есть в новых версиях; иначе пробуем пройтись по output/choices.
++        """
++        # Новая удобная прослойка
++        if hasattr(resp, "output_text") and resp.output_text:
++            return resp.output_text
++        # Универсальный обход
++        try:
++            if getattr(resp, "output", None) and getattr(resp.output, "choices", None):
++                ch0 = resp.output.choices[0]
++                # message/content(0)/text
++                msg = getattr(ch0, "message", None)
++                if msg and getattr(msg, "content", None):
++                    parts = msg.content
++                    if isinstance(parts, list) and parts and getattr(parts[0], "text", None):
++                        return parts[0].text
++                    if isinstance(parts, str):
++                        return parts
++                if getattr(ch0, "content", None):
++                    return ch0.content
++            # try choices[0].message.content style
++            if getattr(resp, "choices", None):
++                ch0 = resp.choices[0]
++                msg = getattr(ch0, "message", None)
++                if msg and getattr(msg, "content", None):
++                    return msg.content
++        except Exception:
++            pass
++        return ""
+@@
+-        openai.api_key = self.api_key
+-        try:
+-            response = openai.ChatCompletion.create(
+-                model=self.openai_model,
+-                messages=[
+-                    {"role": "system", "content": context_prompt},
+-                    {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"}
+-                ],
+-                temperature=self.temperature
+-            )
+-            return response["choices"][0]["message"]["content"]
+-        except Exception as e:
+-            return f"Ошибка при обращении к OpenAI: {e}"
++        try:
++            if _OPENAI_V1:
++                # responses → фолбэк на chat
++                try:
++                    resp = self._client.responses.create(
++                        model=self.openai_model,
++                        input=f"{context_prompt}\n\nАнализируй код из файла {file_path}:\n{code_chunk}",
++                        temperature=self.temperature,
++                        timeout=self.request_timeout,
++                    )
++                    return self._extract_text_v1(resp)
++                except Exception:
++                    resp = self._client.chat.completions.create(
++                        model=self.openai_model,
++                        messages=[
++                            {"role": "system", "content": context_prompt},
++                            {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"},
++                        ],
++                        temperature=self.temperature,
++                        timeout=self.request_timeout,
++                    )
++                    return resp.choices[0].message.content or ""
++            else:
++                response = openai.ChatCompletion.create(
++                    model=self.openai_model,
++                    messages=[
++                        {"role": "system", "content": context_prompt},
++                        {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"},
++                    ],
++                    temperature=self.temperature,
++                    request_timeout=self.request_timeout,
++                )
++                return response["choices"][0]["message"]["content"]
++        except Exception as e:
++            return f"Ошибка при обращении к OpenAI: {e}"

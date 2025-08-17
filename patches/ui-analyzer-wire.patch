@@ -1,0 +1,145 @@
+*** a/app/modules/ui_analyzer/analyzer.py
+--- b/app/modules/ui_analyzer/analyzer.py
+@@
+-from typing import List, Dict, Any
++from typing import List, Dict, Any, Optional
++from dataclasses import dataclass
++from datetime import datetime
++
++@dataclass
++class UIEvent:
++    ts: float
++    type: str
++    widget: str
++    detail: str = ""
+ 
+ class UIAnalyzer:
+-    def __init__(self):
+-        self.events: List[UIEvent] = []
++    def __init__(self):
++        self.events: List[UIEvent] = []
+ 
+-    def track(self, event: UIEvent) -> None:
+-        self.events.append(event)
++    def track(self, event: UIEvent) -> None:
++        self.events.append(event)
+ 
+     def snapshot(self) -> Dict[str, Any]:
+         return {
+             "events_count": len(self.events),
+             "widgets": sorted({e.widget for e in self.events})
+         }
+ 
+     def recommend(self) -> List[str]:
+-        # TODO: сюда позже добавим интеллект + запросы к GPT на базе метасаммери 
+-        return ["(scaffold) Недостаточно данных для рекомендаций"]
++        # TODO: сюда позже добавим интеллект + запросы к GPT на базе метасаммери
++        if len(self.events) < 5:
++            return ["(scaffold) Недостаточно данных для рекомендаций"]
++        hot = {}
++        for e in self.events:
++            hot[e.widget] = hot.get(e.widget, 0) + 1
++        top = sorted(hot.items(), key=lambda x: x[1], reverse=True)[:3]
++        tips = [f"Часто используется: {name} ({cnt}) — проверь доступность/хоткеи/подсказки." for name, cnt in top]
++        return tips
+*** a/app/ui/main_window.py
+--- b/app/ui/main_window.py
+@@
+-from .chat_panel import ChatPanel
++from .chat_panel import ChatPanel
+ from app.modules.self_improver import SelfImprover
+ from app.modules.improver.project_scanner import ProjectScanner
++from app.modules.ui_analyzer.analyzer import UIAnalyzer, UIEvent
++from PyQt6.QtCore import QObject, QEvent, QDateTime
++from PyQt6.QtWidgets import QApplication, QPushButton, QLineEdit, QComboBox, QCheckBox, QPlainTextEdit, QTextEdit, QTabWidget, QHBoxLayout, QVBoxLayout, QWidget
+@@
+ class SelfImproverPanel(QWidget):
+@@
+         layout.addLayout(btn_row)
+         self.setLayout(layout)
+ 
++class UIEventsFilter(QObject):
++    def __init__(self, ui_analyzer: UIAnalyzer):
++        super().__init__()
++        self.ui_analyzer = ui_analyzer
++
++    def eventFilter(self, obj, event):
++        et = event.type()
++        name = obj.objectName() or obj.__class__.__name__
++        if et in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick):
++            self.ui_analyzer.track(UIEvent(ts=QDateTime.currentDateTime().toSecsSinceEpoch(), type="click", widget=name))
++        elif et == QEvent.Type.KeyPress:
++            self.ui_analyzer.track(UIEvent(ts=QDateTime.currentDateTime().toSecsSinceEpoch(), type="key", widget=name))
++        elif et == QEvent.Type.FocusIn:
++            self.ui_analyzer.track(UIEvent(ts=QDateTime.currentDateTime().toSecsSinceEpoch(), type="focus", widget=name))
++        return super().eventFilter(obj, event)
++
+ class MainWindow(QMainWindow):
+@@
+-        splitter = QSplitter(Qt.Orientation.Horizontal)
++        splitter = QSplitter(Qt.Orientation.Horizontal)
+ 
+         self.chat_panel = ChatPanel(config=self.config, parent=self)
+         self.self_improver_panel = SelfImproverPanel(
+             config=self.config,
+             chat_panel=self.chat_panel,
+             parent=self
+         )
+ 
+-        splitter.addWidget(self.chat_panel)
+-        splitter.addWidget(self.self_improver_panel)
++        # UI Analyzer tab
++        self.ui_analyzer = UIAnalyzer()
++        self.ui_tab = QTextEdit()
++        self.ui_tab.setReadOnly(True)
++        self.ui_tab.setStyleSheet("background-color: #f0fff4; font-family: monospace;")
++        self.ui_tab.setText("UI Analyzer — собирать события и давать рекомендации.\n")
++
++        right_tabs = QTabWidget()
++        right_tabs.addTab(self.self_improver_panel, "Саморазвитие")
++        right_tabs.addTab(self.ui_tab, "UI-аналитика")
++
++        splitter.addWidget(self.chat_panel)
++        splitter.addWidget(right_tabs)
+@@
+         self.setCentralWidget(central_widget)
++        # Глобальный фильтр событий
++        app = QApplication.instance()
++        if app:
++            self._ui_filter = UIEventsFilter(self.ui_analyzer)
++            app.installEventFilter(self._ui_filter)
++        self._mount_ui_tab_toolbar(right_tabs)
++
++    def _mount_ui_tab_toolbar(self, parent_tabs: QTabWidget):
++        wrap = QWidget(parent_tabs)
++        layout = QVBoxLayout(wrap)
++        row = QHBoxLayout()
++        btn_snapshot = QPushButton("📸 Снимок")
++        btn_reco = QPushButton("🤖 Рекомендации")
++        btn_clear = QPushButton("🧹 Очистить")
++        row.addWidget(btn_snapshot)
++        row.addWidget(btn_reco)
++        row.addWidget(btn_clear)
++        row.addStretch(1)
++        layout.addLayout(row)
++        layout.addWidget(self.ui_tab)
++
++        idx = parent_tabs.indexOf(self.ui_tab)
++        parent_tabs.removeTab(idx)
++        parent_tabs.insertTab(idx, wrap, "UI-аналитика")
++
++        def on_snapshot():
++            snap = self.ui_analyzer.snapshot()
++            self.ui_tab.append(f"\n--- SNAPSHOT ---\n{snap}")
++        def on_reco():
++            tips = self.ui_analyzer.recommend()
++            self.ui_tab.append("\n--- РЕКОМЕНДАЦИИ ---")
++            for t in tips:
++                self.ui_tab.append(f"• {t}")
++        def on_clear():
++            self.ui_analyzer.events.clear()
++            self.ui_tab.append("\n(очищено)")
++
++        btn_snapshot.clicked.connect(on_snapshot)
++        btn_reco.clicked.connect(on_reco)
++        btn_clear.clicked.connect(on_clear)

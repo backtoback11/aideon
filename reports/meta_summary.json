@@ -1,0 +1,702 @@
+{
+  "meta_version": "1.1",
+  "generated_at": "2025-08-17T19:01:24Z",
+  "project_size_estimate": "2582 lines",
+  "files": [
+    {
+      "path": "logger.py",
+      "lines": 55,
+      "classes": 1,
+      "functions": 4,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "utils.py",
+      "lines": 7,
+      "classes": 0,
+      "functions": 1,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "core/file_manager.py",
+      "lines": 327,
+      "classes": 1,
+      "functions": 16,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/fixer.py",
+      "lines": 150,
+      "classes": 1,
+      "functions": 7,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/runner.py",
+      "lines": 69,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/analyzer.py",
+      "lines": null,
+      "classes": null,
+      "functions": null,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/utils.py",
+      "lines": 18,
+      "classes": 0,
+      "functions": 1,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/orchestrator.py",
+      "lines": 206,
+      "classes": 1,
+      "functions": 13,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/self_improver.py",
+      "lines": null,
+      "classes": null,
+      "functions": null,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/improver/error_debugger.py",
+      "lines": 45,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/improver/project_scanner.py",
+      "lines": 280,
+      "classes": [
+        "ProjectScanner"
+      ],
+      "functions": [
+        "__init__",
+        "_guess_tags",
+        "_hash_file",
+        "_is_valid_file",
+        "_load_cache",
+        "_save_cache",
+        "_should_ignore",
+        "_structure_full",
+        "_structure_legacy",
+        "is_copy_or_temp",
+        "is_hidden",
+        "scan"
+      ],
+      "todos": 0,
+      "tags": [
+        "improver",
+        "openai"
+      ],
+      "description": null,
+      "structure": {
+        "lines": 280,
+        "classes_count": 1,
+        "functions_count": 12,
+        "class_names": [
+          "ProjectScanner"
+        ],
+        "function_names": [
+          "__init__",
+          "_guess_tags",
+          "_hash_file",
+          "_is_valid_file",
+          "_load_cache",
+          "_save_cache",
+          "_should_ignore",
+          "_structure_full",
+          "_structure_legacy",
+          "is_copy_or_temp",
+          "is_hidden",
+          "scan"
+        ]
+      }
+    },
+    {
+      "path": "modules/improver/improvement_planner.py",
+      "lines": 51,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/improver/patcher.py",
+      "lines": 77,
+      "classes": 1,
+      "functions": 6,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/improver/patch_requester.py",
+      "lines": 59,
+      "classes": 1,
+      "functions": 2,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/improver/file_summarizer.py",
+      "lines": null,
+      "classes": null,
+      "functions": null,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "modules/improver/meta_summarizer.py",
+      "lines": 289,
+      "classes": [
+        "MetaSummarizer"
+      ],
+      "functions": [
+        "__init__",
+        "build_meta_summary",
+        "export_json",
+        "render_markdown",
+        "_build_summary_from_structure",
+        "_normalize_entry",
+        "_extract_description",
+        "_collect_project_facts",
+        "_git_facts",
+        "_read_settings",
+        "_detect_model_name",
+        "_detect_key_source",
+        "_features_detect",
+        "_pip_freeze_sample",
+        "_run"
+      ],
+      "todos": 0,
+      "tags": null,
+      "description": null,
+      "structure": {
+        "lines": 289,
+        "classes_count": 1,
+        "functions_count": 15,
+        "class_names": [
+          "MetaSummarizer"
+        ],
+        "function_names": [
+          "__init__",
+          "build_meta_summary",
+          "export_json",
+          "render_markdown",
+          "_build_summary_from_structure",
+          "_normalize_entry",
+          "_extract_description",
+          "_collect_project_facts",
+          "_git_facts",
+          "_read_settings",
+          "_detect_model_name",
+          "_detect_key_source",
+          "_features_detect",
+          "_pip_freeze_sample",
+          "_run"
+        ]
+      }
+    },
+    {
+      "path": "modules/ui_analyzer/analyzer.py",
+      "lines": null,
+      "classes": null,
+      "functions": null,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/main_window.py",
+      "lines": null,
+      "classes": null,
+      "functions": null,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/chat_panel.py",
+      "lines": 113,
+      "classes": 1,
+      "functions": 7,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/analysis_thread.py",
+      "lines": 74,
+      "classes": 1,
+      "functions": 4,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/panels/panel_issues.py",
+      "lines": 27,
+      "classes": 1,
+      "functions": 3,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/panels/panel_solutions.py",
+      "lines": 126,
+      "classes": 1,
+      "functions": 6,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/panels/panel_history.py",
+      "lines": 190,
+      "classes": 1,
+      "functions": 7,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/panels/panel_process.py",
+      "lines": 364,
+      "classes": 2,
+      "functions": 19,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    },
+    {
+      "path": "ui/panels/panel_result.py",
+      "lines": 55,
+      "classes": 1,
+      "functions": 4,
+      "todos": 0,
+      "tags": null,
+      "description": null
+    }
+  ],
+  "folders": [
+    {
+      "path": ".",
+      "items": [
+        {
+          "name": "logger.py",
+          "lines": 55,
+          "classes": 1,
+          "functions": 4,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "utils.py",
+          "lines": 7,
+          "classes": 0,
+          "functions": 1,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        }
+      ]
+    },
+    {
+      "path": "core",
+      "items": [
+        {
+          "name": "file_manager.py",
+          "lines": 327,
+          "classes": 1,
+          "functions": 16,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        }
+      ]
+    },
+    {
+      "path": "modules",
+      "items": [
+        {
+          "name": "fixer.py",
+          "lines": 150,
+          "classes": 1,
+          "functions": 7,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "runner.py",
+          "lines": 69,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "analyzer.py",
+          "lines": null,
+          "classes": null,
+          "functions": null,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "utils.py",
+          "lines": 18,
+          "classes": 0,
+          "functions": 1,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "orchestrator.py",
+          "lines": 206,
+          "classes": 1,
+          "functions": 13,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "self_improver.py",
+          "lines": null,
+          "classes": null,
+          "functions": null,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        }
+      ]
+    },
+    {
+      "path": "modules/improver",
+      "items": [
+        {
+          "name": "error_debugger.py",
+          "lines": 45,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "project_scanner.py",
+          "lines": 280,
+          "classes": [
+            "ProjectScanner"
+          ],
+          "functions": [
+            "__init__",
+            "_guess_tags",
+            "_hash_file",
+            "_is_valid_file",
+            "_load_cache",
+            "_save_cache",
+            "_should_ignore",
+            "_structure_full",
+            "_structure_legacy",
+            "is_copy_or_temp",
+            "is_hidden",
+            "scan"
+          ],
+          "todos": 0,
+          "tags": [
+            "improver",
+            "openai"
+          ],
+          "description": null,
+          "structure": {
+            "lines": 280,
+            "classes_count": 1,
+            "functions_count": 12,
+            "class_names": [
+              "ProjectScanner"
+            ],
+            "function_names": [
+              "__init__",
+              "_guess_tags",
+              "_hash_file",
+              "_is_valid_file",
+              "_load_cache",
+              "_save_cache",
+              "_should_ignore",
+              "_structure_full",
+              "_structure_legacy",
+              "is_copy_or_temp",
+              "is_hidden",
+              "scan"
+            ]
+          }
+        },
+        {
+          "name": "improvement_planner.py",
+          "lines": 51,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "patcher.py",
+          "lines": 77,
+          "classes": 1,
+          "functions": 6,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "patch_requester.py",
+          "lines": 59,
+          "classes": 1,
+          "functions": 2,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "file_summarizer.py",
+          "lines": null,
+          "classes": null,
+          "functions": null,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "meta_summarizer.py",
+          "lines": 289,
+          "classes": [
+            "MetaSummarizer"
+          ],
+          "functions": [
+            "__init__",
+            "build_meta_summary",
+            "export_json",
+            "render_markdown",
+            "_build_summary_from_structure",
+            "_normalize_entry",
+            "_extract_description",
+            "_collect_project_facts",
+            "_git_facts",
+            "_read_settings",
+            "_detect_model_name",
+            "_detect_key_source",
+            "_features_detect",
+            "_pip_freeze_sample",
+            "_run"
+          ],
+          "todos": 0,
+          "tags": null,
+          "description": null,
+          "structure": {
+            "lines": 289,
+            "classes_count": 1,
+            "functions_count": 15,
+            "class_names": [
+              "MetaSummarizer"
+            ],
+            "function_names": [
+              "__init__",
+              "build_meta_summary",
+              "export_json",
+              "render_markdown",
+              "_build_summary_from_structure",
+              "_normalize_entry",
+              "_extract_description",
+              "_collect_project_facts",
+              "_git_facts",
+              "_read_settings",
+              "_detect_model_name",
+              "_detect_key_source",
+              "_features_detect",
+              "_pip_freeze_sample",
+              "_run"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "path": "modules/ui_analyzer",
+      "items": [
+        {
+          "name": "analyzer.py",
+          "lines": null,
+          "classes": null,
+          "functions": null,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        }
+      ]
+    },
+    {
+      "path": "ui",
+      "items": [
+        {
+          "name": "main_window.py",
+          "lines": null,
+          "classes": null,
+          "functions": null,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "chat_panel.py",
+          "lines": 113,
+          "classes": 1,
+          "functions": 7,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "analysis_thread.py",
+          "lines": 74,
+          "classes": 1,
+          "functions": 4,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        }
+      ]
+    },
+    {
+      "path": "ui/panels",
+      "items": [
+        {
+          "name": "panel_issues.py",
+          "lines": 27,
+          "classes": 1,
+          "functions": 3,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "panel_solutions.py",
+          "lines": 126,
+          "classes": 1,
+          "functions": 6,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "panel_history.py",
+          "lines": 190,
+          "classes": 1,
+          "functions": 7,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "panel_process.py",
+          "lines": 364,
+          "classes": 2,
+          "functions": 19,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        },
+        {
+          "name": "panel_result.py",
+          "lines": 55,
+          "classes": 1,
+          "functions": 4,
+          "todos": 0,
+          "tags": null,
+          "description": null
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "folders_count": 7,
+    "files_count": 25,
+    "lines_total": 2582
+  },
+  "project_facts": {
+    "python_version": "3.12.8",
+    "os": "macOS-15.6-arm64-arm-64bit",
+    "files_count": 25,
+    "lines_total": 2582,
+    "git": {
+      "commit": "d7a059d",
+      "branch": "main",
+      "is_dirty": true
+    },
+    "settings_source": "app/configs/settings.json",
+    "env": {
+      "OPENAI_API_KEY_present": true
+    },
+    "openai": {
+      "model_name": "gpt-4-turbo",
+      "key_source": "env/.env|ENV"
+    },
+    "features": [
+      "ui_analyzer",
+      "self_improver",
+      "meta_summarizer",
+      "qt_ui"
+    ],
+    "installed_packages": [
+      "Jinja2==3.1.5",
+      "MarkupSafe==3.0.2",
+      "PyQt6-Qt6==6.8.2",
+      "PyQt6==6.8.1",
+      "PyQt6_sip==13.10.0",
+      "PyYAML==6.0.2",
+      "accelerate==1.3.0",
+      "aiohappyeyeballs==2.4.6",
+      "aiohttp==3.11.12",
+      "aiosignal==1.3.2"
+    ]
+  }
+}

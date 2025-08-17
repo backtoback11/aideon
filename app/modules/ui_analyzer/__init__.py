@@ -1,0 +1,1 @@
+# UI Analyzer module (scaffold)

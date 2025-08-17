@@ -1,0 +1,127 @@
+*** Begin Patch
+*** Update File: app/modules/analyzer.py
+@@
+-import json
+-import openai
+-
+-from app.utils import load_api_key
+-from app.core.file_manager import FileManager
++import json
++import time
++from typing import Optional
++from app.utils import load_api_key
++from app.core.file_manager import FileManager
++try:
++    # Новый клиент (>= 2024)
++    from openai import OpenAI
++    _HAS_OAI_CLIENT = True
++except Exception:
++    _HAS_OAI_CLIENT = False
++import openai  # fallback на старый интерфейс
+@@
+ class CodeAnalyzer:
+@@
+-        self.openai_model = self.config.get("model_name", "gpt-4o")
+-        self.temperature = self.config.get("temperature", 0.7)
+-        self.max_context_tokens = self.config.get("max_context_tokens", 8192)
++        self.openai_model = self.config.get("model_name", "gpt-4o")
++        self.temperature = float(self.config.get("temperature", 0.7))
++        self.max_context_tokens = int(self.config.get("max_context_tokens", 8192))
++        self.request_timeout = int(self.config.get("request_timeout", 60))
++        self.max_retries = int(self.config.get("max_retries", 2))
++
++        # Инициализация API-клиента (новый/старый)
++        self._client: Optional["OpenAI"] = None
++        if _HAS_OAI_CLIENT:
++            try:
++                self._client = OpenAI(api_key=self.api_key)
++            except Exception:
++                self._client = None
+ 
+         print("✅ Используется ChatGPT (OpenAI).")
+ 
+     def chat(self, prompt, system_msg="Ты — Aideon, самообучающийся AI."):
+         """
+         Свободный диалог с ChatGPT.
+         """
+-        openai.api_key = self.api_key
+-        try:
+-            response = openai.ChatCompletion.create(
+-                model=self.openai_model,
+-                messages=[
+-                    {"role": "system", "content": system_msg},
+-                    {"role": "user", "content": prompt}
+-                ],
+-                temperature=self.temperature
+-            )
+-            return response["choices"][0]["message"]["content"]
+-        except Exception as e:
+-            return f"Ошибка при обращении к OpenAI: {e}"
++        messages = [
++            {"role": "system", "content": system_msg},
++            {"role": "user", "content": prompt},
++        ]
++        return self._chat_call(messages)
+@@
+     def _analyze_single_chunk(self, code_chunk, file_path=None):
+         """
+         Запрос к OpenAI для анализа отдельного чанка кода.
+         """
+@@
+-        openai.api_key = self.api_key
+-        try:
+-            response = openai.ChatCompletion.create(
+-                model=self.openai_model,
+-                messages=[
+-                    {"role": "system", "content": context_prompt},
+-                    {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"}
+-                ],
+-                temperature=self.temperature
+-            )
+-            return response["choices"][0]["message"]["content"]
+-        except Exception as e:
+-            return f"Ошибка при обращении к OpenAI: {e}"
++        messages = [
++            {"role": "system", "content": context_prompt},
++            {"role": "user", "content": f"Анализируй код из файла {file_path}:\n{code_chunk}"},
++        ]
++        return self._chat_call(messages)
+@@
+     def _split_into_chunks(self, text, max_ctx):
+@@
+         for i in range(0, len(words), max_ctx):
+             chunks.append(" ".join(words[i:i + max_ctx]))
+         return chunks
++
++    # --- Приватный унифицированный вызов OpenAI с ретраями/таймаутами ---
++    def _chat_call(self, messages):
++        """
++        Единая точка вызова OpenAI (новый клиент или fallback на старый API).
++        Ретраи с экспоненциальной паузой. Возвращает строку-ответ или сообщение об ошибке.
++        """
++        last_err = None
++        for attempt in range(self.max_retries + 1):
++            try:
++                if self._client is not None:
++                    resp = self._client.chat.completions.create(
++                        model=self.openai_model,
++                        messages=messages,
++                        temperature=self.temperature,
++                        timeout=self.request_timeout,
++                    )
++                    return (resp.choices[0].message.content or "").strip()
++                else:
++                    openai.api_key = self.api_key
++                    response = openai.ChatCompletion.create(
++                        model=self.openai_model,
++                        messages=messages,
++                        temperature=self.temperature,
++                        request_timeout=self.request_timeout,
++                    )
++                    return (response["choices"][0]["message"]["content"] or "").strip()
++            except Exception as e:
++                last_err = e
++                if attempt < self.max_retries:
++                    time.sleep(1.5 * (attempt + 1))
++        return f"Ошибка при обращении к OpenAI: {last_err}"
+*** End Patch
