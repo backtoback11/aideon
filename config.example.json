@@ -1,0 +1,11 @@
+{
+  "openai_api_key": "YOUR_OPENAI_API_KEY",
+  "model_name": "gpt-4o",
+  "temperature": 0.7
+}
+
+{
+  "auto_bugfix": true,
+  "max_fix_cycles": 2,
+  "auto_apply_patches": false
+}

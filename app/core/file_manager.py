@@ -1,327 +1,302 @@
+# app/core/file_manager.py
+from __future__ import annotations
+
+import hashlib
+import io
 import os
 import shutil
-import json
-from PyQt6.QtWidgets import QFileDialog
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable, List, Optional, Union
 
-# Набор исключаемых директорий
-EXCLUDED_DIRS = {
-    "venv", ".git", "__pycache__", "node_modules", "dist", "build",
-    "site-packages", ".idea", ".vs", ".vscode",
-    "sandbox"  # Чтобы не копировать саму себя
-}
+from app.logger import log_info, log_warning, log_error
 
-# Набор исключаемых расширений
-EXCLUDED_EXTS = {
-    ".pyc", ".pyo", ".log", ".exe", ".dll", ".so", ".dylib",
-    ".zip", ".rar", ".7z", ".tar", ".gz"
-}
 
-# Пример ограничения размера (в байтах)
-MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+@dataclass
+class FileManagerConfig:
+    base_dir: Path
+    allowed_roots: Optional[List[Path]] = None          # если None — разрешаем только base_dir
+    read_only_paths: Optional[List[Path]] = None        # список путей только для чтения
+    backups_dirname: str = ".aideon_backups"
+    create_missing_dirs: bool = True
+    atomic_write: bool = True
 
-# Ограничение на длину пути (примерно)
-MAX_PATH_LENGTH = 250
+
+# ---------- вспомогательные ----------
+
+def _as_path_list(values: Optional[Iterable[Union[str, Path]]]) -> List[Path]:
+    if not values:
+        return []
+    out: List[Path] = []
+    for v in values:
+        out.append(Path(v).expanduser().resolve())
+    return out
+
+
+def _project_root_from_here() -> Path:
+    """
+    Определяем корень репозитория по расположению этого файла:
+    .../aideon_5.0/app/core/file_manager.py --> repo_root = parents[2]
+    """
+    return Path(__file__).resolve().parents[2]
 
 
 class FileManager:
-    def __init__(self, sandbox_path="app/sandbox", history_path="app/logs/history.json"):
-        """
-        Управляет загрузкой файлов / проектов в песочницу (sandbox),
-        формирует и сохраняет структуру проекта, ведёт историю загрузок.
-        """
-        self.sandbox_path = os.path.abspath(sandbox_path)
-        self.history_path = history_path
-        self.project_tree_path = "app/logs/project_tree.json"
+    """
+    Централизованный менеджер файлов.
+    Совместим со скиллами fs_read/fs_write, CodePatcher и агентом.
 
-        os.makedirs(self.sandbox_path, exist_ok=True)
-        os.makedirs(os.path.dirname(self.history_path), exist_ok=True)
+    Гарантии:
+      - Нормализация путей.
+      - Белый список allowed_roots (включая base_dir).
+      - Опциональная atomic_write (через временный файл + rename()).
+      - Бэкап старой версии файла перед записью.
 
-        self._original_project_root = None  # Запоминаем корень исходного проекта
+    Обратная совместимость:
+      - FileManager() без аргументов — берёт repo_root как base_dir.
+      - FileManager(config=FileManagerConfig(...)) — как раньше.
+      - FileManager(base_dir=..., allowed_roots=..., ...) — старыми kwargs.
+    """
 
-    # ---------------------------------------------------------
-    # Диалоги выбора (файл / проект)
-    # ---------------------------------------------------------
-    def open_file_dialog(self, multiple=False):
-        """Вызывает системный диалог выбора файлов."""
-        if multiple:
-            files, _ = QFileDialog.getOpenFileNames(
-                None,
-                "Выберите файлы для анализа",
-                "",
-                "Все файлы (*);;Python Files (*.py)"
+    def __init__(
+        self,
+        config: Optional[FileManagerConfig] = None,
+        *,
+        # legacy kwargs (необязательные)
+        base_dir: Optional[Union[str, Path]] = None,
+        allowed_roots: Optional[Iterable[Union[str, Path]]] = None,
+        read_only_paths: Optional[Iterable[Union[str, Path]]] = None,
+        backups_dirname: Optional[str] = None,
+        create_missing_dirs: Optional[bool] = None,
+        atomic_write: Optional[bool] = None,
+    ):
+        # Собираем итоговый конфиг
+        if config is None:
+            base = Path(base_dir).expanduser().resolve() if base_dir else _project_root_from_here()
+            cfg = FileManagerConfig(
+                base_dir=base,
+                allowed_roots=_as_path_list(allowed_roots) if allowed_roots is not None else [base],
+                read_only_paths=_as_path_list(read_only_paths) if read_only_paths is not None else [],
+                backups_dirname=backups_dirname or ".aideon_backups",
+                create_missing_dirs=True if create_missing_dirs is None else bool(create_missing_dirs),
+                atomic_write=True if atomic_write is None else bool(atomic_write),
             )
-            return files or []
         else:
-            file_path, _ = QFileDialog.getOpenFileName(
-                None,
-                "Выберите файл для анализа",
-                "",
-                "Все файлы (*);;Python Files (*.py)"
+            base = Path(config.base_dir).expanduser().resolve()
+            cfg = FileManagerConfig(
+                base_dir=base,
+                allowed_roots=_as_path_list(allowed_roots) if allowed_roots is not None else (
+                    [Path(p).expanduser().resolve() for p in (config.allowed_roots or [base])]
+                ),
+                read_only_paths=_as_path_list(read_only_paths) if read_only_paths is not None else (
+                    [Path(p).expanduser().resolve() for p in (config.read_only_paths or [])]
+                ),
+                backups_dirname=backups_dirname or config.backups_dirname,
+                create_missing_dirs=config.create_missing_dirs if create_missing_dirs is None else bool(create_missing_dirs),
+                atomic_write=config.atomic_write if atomic_write is None else bool(atomic_write),
             )
-            return [file_path] if file_path else []
 
-    def open_project_dialog(self):
-        """Открывает диалог выбора папки проекта, копирует её в sandbox (с фильтрацией)."""
-        project_path = QFileDialog.getExistingDirectory(None, "Выберите проект для анализа")
-        if not project_path:
-            print("[FileManager] Пользователь отменил выбор проекта.")
-            return None
+        self.cfg = cfg
+        self.base_dir = self._norm(cfg.base_dir)
 
-        project_path = os.path.abspath(project_path)
-        print(f"[FileManager] Исходный проект: {project_path}")
+        # Если allowed_roots не задан — используем только base_dir
+        self.allowed_roots = [self._norm(p) for p in (cfg.allowed_roots or [self.base_dir])]
+        # Гарантируем, что base_dir входит в allowed_roots
+        if not any(str(self.base_dir).startswith(str(r)) or str(r).startswith(str(self.base_dir)) for r in self.allowed_roots):
+            self.allowed_roots.append(self.base_dir)
 
-        if project_path.startswith(self.sandbox_path):
-            print("[FileManager] Предупреждение: проект уже внутри sandbox. Копирование отменено.")
-            return None
+        self.read_only_paths = [self._norm(p) for p in (cfg.read_only_paths or [])]
+        self.backups_dir = self.base_dir / self.cfg.backups_dirname
+        self.backups_dir.mkdir(parents=True, exist_ok=True)
 
-        destination = os.path.join(self.sandbox_path, os.path.basename(project_path))
-        destination = os.path.abspath(destination)
-        print(f"[FileManager] Копируем проект в sandbox: {destination}")
+        log_info(f"[FileManager] base_dir={self.base_dir}")
+        log_info(f"[FileManager] allowed_roots={self.allowed_roots}")
 
-        # Удаляем старый проект, если есть
-        if os.path.exists(destination):
-            print(f"[FileManager] Удаляем старую копию: {destination}")
-            shutil.rmtree(destination)
+    # ---------- path helpers ----------
 
-        # Запоминаем корневой путь (для _ignore_filter)
-        self._original_project_root = project_path
+    def _norm(self, p: os.PathLike | str) -> Path:
+        return Path(p).expanduser().resolve()
 
-        try:
-            shutil.copytree(
-                src=project_path,
-                dst=destination,
-                ignore=self._ignore_filter  # Используем встроенный ignore
-            )
-            print("[FileManager] Проект скопирован (copytree).")
-        except Exception as e:
-            # Логируем, но всё равно продолжаем (папка может быть частично скопирована)
-            print(f"[FileManager] Ошибка при копировании проекта: {e}")
-            # Можно при желании вернуть None, если считаем операцию провальной
-            # Но если хотим «частично» считать её успешной, не прерываем
-
-        # Сохраняем структуру (того, что успели скопировать)
-        self._save_project_tree(destination)
-        # Запись в history.json
-        self._save_to_history(destination, is_project=True)
-        print("[FileManager] Проект обработан, даже если были ошибки. Возвращаем destination.")
-        return destination
-
-    # ---------------------------------------------------------
-    # Загрузка одиночного файла
-    # ---------------------------------------------------------
-    def save_file(self, source_path):
-        """Копирует файл в sandbox, логирует ошибку, но не прерывает всю работу."""
-        if not source_path:
-            print("[FileManager] save_file: Путь к файлу пуст.")
-            return None
-
-        source_path = os.path.abspath(source_path)
-        filename = os.path.basename(source_path)
-        destination = os.path.join(self.sandbox_path, filename)
-        destination = os.path.abspath(destination)
-
-        print(f"[FileManager] save_file копирование: {source_path} → {destination}")
-
-        try:
-            if self._too_long_path(destination):
-                print(f"[FileManager] Путь слишком длинный: {destination}")
-                return None
-
-            if source_path.startswith(self.sandbox_path):
-                print("[FileManager] Файл уже в sandbox, пропускаем копирование.")
-                return None
-
-            shutil.copy2(source_path, destination)
-            self._save_to_history(destination, is_project=False)
-            print("[FileManager] Файл скопирован в sandbox.")
-            return destination
-        except Exception as e:
-            print(f"[FileManager] Ошибка при копировании файла: {e}")
-            return None
-
-    # ---------------------------------------------------------
-    # Чтение / список / удаление
-    # ---------------------------------------------------------
-    def read_file(self, file_path):
-        if not file_path or not os.path.exists(file_path):
-            print(f"[FileManager] read_file: Файл не найден: {file_path}")
-            return None
-
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = f.read()
-            print(f"[FileManager] Файл прочитан: {file_path}")
-            return data
-        except Exception as e:
-            print(f"[FileManager] Ошибка при чтении файла '{file_path}': {e}")
-            return None
-
-    def list_files(self):
-        """Список (файлов и папок) на верхнем уровне sandbox."""
-        try:
-            items = os.listdir(self.sandbox_path)
-            print(f"[FileManager] Содержимое sandbox: {items}")
-            return items
-        except Exception as e:
-            print(f"[FileManager] Ошибка при list_files: {e}")
-            return []
-
-    def delete_file(self, filename):
-        """Удаляет файл/папку из sandbox + запись из history. Возвращает bool."""
-        file_path = os.path.join(self.sandbox_path, filename)
-        file_path = os.path.abspath(file_path)
-
-        if os.path.exists(file_path):
-            print(f"[FileManager] Удаляем: {file_path}")
-            try:
-                if os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-                else:
-                    os.remove(file_path)
-                self._remove_from_history(file_path)
+    def _in_allowed_roots(self, p: Path) -> bool:
+        ps = str(p)
+        for root in self.allowed_roots:
+            rs = str(root)
+            if ps == rs or ps.startswith(rs + os.sep) or ps.startswith(rs + "/"):
                 return True
-            except Exception as e:
-                print(f"[FileManager] Ошибка удаления '{file_path}': {e}")
-                return False
-        else:
-            print(f"[FileManager] delete_file: Нет такого файла/папки: {file_path}")
-            return False
-
-    # ---------------------------------------------------------
-    # История (history.json)
-    # ---------------------------------------------------------
-    def _save_to_history(self, path, is_project=False):
-        """Добавляем запись (path, type=file/project) в history.json, если её нет."""
-        history = self._load_history()
-        known_paths = {h["path"] for h in history}
-        if path not in known_paths:
-            entry_type = "project" if is_project else "file"
-            print(f"[FileManager] Добавляем в history: {path} (type={entry_type})")
-            history.append({
-                "path": path,
-                "type": entry_type
-            })
-            try:
-                with open(self.history_path, "w", encoding="utf-8") as f:
-                    json.dump(history, f, indent=4, ensure_ascii=False)
-            except Exception as e:
-                print(f"[FileManager] Ошибка записи history.json: {e}")
-
-    def _load_history(self):
-        if not os.path.exists(self.history_path):
-            return []
-        try:
-            with open(self.history_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"[FileManager] Ошибка при чтении history.json: {e}")
-            return []
-
-    def _remove_from_history(self, file_path):
-        history = self._load_history()
-        new_hist = [x for x in history if x["path"] != file_path]
-        if len(new_hist) != len(history):
-            print(f"[FileManager] Удаляем из history: {file_path}")
-            try:
-                with open(self.history_path, "w", encoding="utf-8") as f:
-                    json.dump(new_hist, f, indent=4, ensure_ascii=False)
-            except Exception as e:
-                print(f"[FileManager] Ошибка записи history.json: {e}")
-
-    # ---------------------------------------------------------
-    # Сохранение структуры проекта (project_tree.json)
-    # ---------------------------------------------------------
-    def _save_project_tree(self, project_path):
-        """Сканируем скопированный проект, записываем структуру в project_tree.json."""
-        project_tree = self.get_project_tree(project_path)
-        print(f"[FileManager] Сохраняем структуру проекта в: {self.project_tree_path}")
-        try:
-            with open(self.project_tree_path, "w", encoding="utf-8") as f:
-                json.dump(project_tree, f, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"[FileManager] Ошибка при сохранении project_tree.json: {e}")
-
-    def get_project_tree(self, project_path="app"):
-        """
-        Возвращает структуру каталогов (dict):
-        {
-          ".": [...файлы...],
-          "subdir": [...],
-          ...
-        }
-        Пропускаем нежелательные dirs/files.
-        """
-        project_path = os.path.abspath(project_path)
-        out_tree = {}
-
-        for root, dirs, files in os.walk(project_path):
-            # Фильтруем dirs, чтобы не заходить в EXCLUDED_DIRS
-            dirs[:] = [d for d in dirs if not self._should_skip_dir(d)]
-
-            valid_files = []
-            for f in files:
-                if not self._should_skip_file(f, root_dir=root):
-                    valid_files.append(f)
-
-            rel_path = os.path.relpath(root, project_path)
-            out_tree[rel_path] = valid_files
-
-        return out_tree
-
-    # ---------------------------------------------------------
-    # Фильтрация (copytree ignore=...) и общие методы
-    # ---------------------------------------------------------
-    def _ignore_filter(self, dir_path, items):
-        """
-        Функция для copytree(ignore=...).
-        Возвращаем список имён, которые надо игнорировать (не копировать).
-        """
-        ignored = []
-
-        # Если не задано, считаем dir_path корнем
-        if not self._original_project_root:
-            self._original_project_root = dir_path
-
-        for name in items:
-            full_path = os.path.join(dir_path, name)
-            rel = os.path.relpath(full_path, self._original_project_root)
-            potential_dest = os.path.join(self.sandbox_path, rel)
-
-            # Проверяем длину пути
-            if self._too_long_path(potential_dest):
-                print(f"[FileManager] Пропускаем '{name}' (слишком длинный путь).")
-                ignored.append(name)
-                continue
-
-            # Проверяем dirs
-            if os.path.isdir(full_path):
-                if self._should_skip_dir(name):
-                    print(f"[FileManager] Пропускаем директорию: '{name}'")
-                    ignored.append(name)
-            else:
-                # Файлы по расширению, размеру
-                if self._should_skip_file(name, root_dir=dir_path):
-                    print(f"[FileManager] Пропускаем файл: '{name}'")
-                    ignored.append(name)
-
-        return ignored
-
-    def _should_skip_dir(self, dirname):
-        return dirname.lower() in EXCLUDED_DIRS
-
-    def _should_skip_file(self, filename, root_dir=None):
-        _, ext = os.path.splitext(filename.lower())
-        if ext in EXCLUDED_EXTS:
-            return True
-
-        if root_dir:
-            full_path = os.path.join(root_dir, filename)
-            if os.path.isfile(full_path):
-                size = os.path.getsize(full_path)
-                if size > MAX_FILE_SIZE:
-                    print(f"[FileManager] _should_skip_file: '{full_path}' (размер {size} > {MAX_FILE_SIZE}).")
-                    return True
         return False
 
-    def _too_long_path(self, path_str):
-        return len(path_str) > MAX_PATH_LENGTH
+    def _is_read_only(self, p: Path) -> bool:
+        ps = str(p)
+        for rp in self.read_only_paths:
+            rs = str(rp)
+            if ps == rs or ps.startswith(rs + os.sep) or ps.startswith(rs + "/"):
+                return True
+        return False
+
+    def resolve(self, rel_or_abs: os.PathLike | str) -> Path:
+        """
+        Разрешаем путь с учётом allowed_roots.
+
+        Правила:
+          - Относительные пути всегда якорим к base_dir.
+          - Абсолютные пути разрешаем, если они лежат в allowed_roots.
+          - Иначе — PermissionError.
+        """
+        raw = Path(rel_or_abs)
+        if not raw.is_absolute():
+            p = self._norm(self.base_dir / raw)
+        else:
+            p = self._norm(raw)
+
+        if not self._in_allowed_roots(p):
+            raise PermissionError(f"Path {p} is outside allowed roots")
+
+        return p
+
+    # ---------- queries ----------
+
+    def exists(self, path: os.PathLike | str) -> bool:
+        try:
+            return self.resolve(path).exists()
+        except Exception:
+            return False
+
+    def is_file(self, path: os.PathLike | str) -> bool:
+        return self.resolve(path).is_file()
+
+    def is_dir(self, path: os.PathLike | str) -> bool:
+        return self.resolve(path).is_dir()
+
+    def list_files(self, root: os.PathLike | str, patterns: Optional[Iterable[str]] = None) -> List[Path]:
+        root_p = self.resolve(root)
+        if not root_p.exists():
+            return []
+        files: List[Path] = []
+        if patterns:
+            for pat in patterns:
+                files.extend(root_p.rglob(pat))
+        else:
+            files = [p for p in root_p.rglob("*") if p.is_file()]
+        return [self._norm(p) for p in files if self._in_allowed_roots(self._norm(p))]
+
+    # ---------- IO ----------
+
+    def read_text(self, path: os.PathLike | str, encoding: str = "utf-8") -> str:
+        p = self.resolve(path)
+        with p.open("r", encoding=encoding, newline="") as f:
+            return f.read()
+
+    def read_bytes(self, path: os.PathLike | str) -> bytes:
+        p = self.resolve(path)
+        with p.open("rb") as f:
+            return f.read()
+
+    def write_text(self, path: os.PathLike | str, data: str, encoding: str = "utf-8") -> Path:
+        p = self.resolve(path)
+        if self._is_read_only(p):
+            raise PermissionError(f"Path {p} is read-only")
+
+        parent = p.parent
+        if self.cfg.create_missing_dirs:
+            parent.mkdir(parents=True, exist_ok=True)
+
+        # backup старой версии (если была)
+        if p.exists():
+            self._backup_file(p)
+
+        if self.cfg.atomic_write:
+            tmp_fd, tmp_name = tempfile.mkstemp(prefix=".aideon_tmp_", dir=str(parent))
+            try:
+                with io.open(tmp_fd, "w", encoding=encoding, newline="") as f:
+                    f.write(data)
+                os.replace(tmp_name, p)  # атомарная замена
+            except Exception as e:
+                try:
+                    os.remove(tmp_name)
+                except Exception:
+                    pass
+                log_error(f"[FileManager] atomic write failed: {e}")
+                raise
+        else:
+            with p.open("w", encoding=encoding, newline="") as f:
+                f.write(data)
+
+        log_info(f"[FileManager] wrote {p}")
+        return p
+
+    def write_bytes(self, path: os.PathLike | str, data: bytes) -> Path:
+        p = self.resolve(path)
+        if self._is_read_only(p):
+            raise PermissionError(f"Path {p} is read-only")
+
+        parent = p.parent
+        if self.cfg.create_missing_dirs:
+            parent.mkdir(parents=True, exist_ok=True)
+
+        if p.exists():
+            self._backup_file(p)
+
+        if self.cfg.atomic_write:
+            tmp_fd, tmp_name = tempfile.mkstemp(prefix=".aideon_tmp_", dir=str(parent))
+            try:
+                with os.fdopen(tmp_fd, "wb") as f:
+                    f.write(data)
+                os.replace(tmp_name, p)
+            except Exception as e:
+                try:
+                    os.remove(tmp_name)
+                except Exception:
+                    pass
+                log_error(f"[FileManager] atomic write (bytes) failed: {e}")
+                raise
+        else:
+            with p.open("wb") as f:
+                f.write(data)
+
+        log_info(f"[FileManager] wrote (bytes) {p}")
+        return p
+
+    # ---------- utils ----------
+
+    def ensure_dir(self, path: os.PathLike | str) -> Path:
+        p = self.resolve(path)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    def copy(self, src: os.PathLike | str, dst: os.PathLike | str) -> None:
+        sp = self.resolve(src)
+        dp = self.resolve(dst)
+        if sp.is_dir():
+            shutil.copytree(sp, dp, dirs_exist_ok=True)
+        else:
+            dp.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(sp, dp)
+
+    def compute_hash(self, path: os.PathLike | str, algo: str = "sha256") -> str:
+        p = self.resolve(path)
+        h = hashlib.new(algo)
+        with p.open("rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    def _backup_file(self, path: Path) -> Optional[Path]:
+        # Пытаемся хранить иерархию бэкапов относительно base_dir
+        try:
+            rel = path.relative_to(self.base_dir)
+        except ValueError:
+            rel = Path("_external_") / path.name
+
+        backup_target = self.backups_dir / rel
+        backup_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, backup_target)
+        log_info(f"[FileManager] backup -> {backup_target}")
+        return backup_target
+
+
+# ============================
+# ✅ Совместимые алиасы/экспорт (строго в конце)
+# ============================
+CoreFileManager = FileManager
+__all__ = ["FileManager", "CoreFileManager", "FileManagerConfig"]

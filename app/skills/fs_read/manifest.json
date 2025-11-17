@@ -1,0 +1,6 @@
+{
+  "name": "fs.read",
+  "description": "Читает текстовый файл с диска",
+  "permissions": ["fs.read"],
+  "inputs": { "path": "str" }
+}

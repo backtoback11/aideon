@@ -1,0 +1,6 @@
+{
+  "name": "proc.shell",
+  "description": "Выполнить shell-команду (обычно заблокировано политикой).",
+  "permissions": ["proc.shell"],
+  "inputs": { "cmd": "str" }
+}

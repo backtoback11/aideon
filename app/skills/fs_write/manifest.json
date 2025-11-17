@@ -1,0 +1,6 @@
+{
+  "name": "fs.write",
+  "description": "Пишет файл на диск (с диффом). По умолчанию dry-run: только diff.",
+  "permissions": ["fs.write"],
+  "inputs": { "path": "str", "new_text": "str", "apply": "bool" }
+}

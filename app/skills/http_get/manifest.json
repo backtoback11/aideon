@@ -1,0 +1,6 @@
+{
+  "name": "http.get",
+  "description": "Простой GET-запрос (если политика разрешает сеть).",
+  "permissions": ["net.out"],
+  "inputs": { "url": "str", "timeout": "int" }
+}

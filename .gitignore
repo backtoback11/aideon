@@ -18,3 +18,4 @@ app/backups/
 app/sandbox/
 
 .env
+config.json

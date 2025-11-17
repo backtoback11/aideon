@@ -1,0 +1,6 @@
+{
+  "profile": "restricted",
+  "net_disabled": false,
+  "allow_shell": false,
+  "fs_write_whitelist": []
+}
